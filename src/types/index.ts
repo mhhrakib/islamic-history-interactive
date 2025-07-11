@@ -9,7 +9,7 @@ export interface User {
 
 export interface UserProfile {
   userId: string;
-  completedEventIds: number[];
+  completedEventIds: string[];
   dailyStreak: number;
   lastLogin: string; // ISO date string
   globalQuizStats: {
@@ -17,8 +17,9 @@ export interface UserProfile {
     lastScore: number;
     lastPlayed: string; // ISO date string
   };
-  lastViewedTopicId?: number;
-  lastViewedEventId?: number;
+  // Changed from optional string to allow null
+  lastViewedTopicId: string | null; 
+  lastViewedEventId: string | null;
 }
 
 export interface GlobalQuizItem {
@@ -29,7 +30,7 @@ export interface GlobalQuizItem {
 }
 
 export interface HistoricalTopic {
-  id: number;
+  id: string;
   name:string;
   title: string;
   period: string;
@@ -39,7 +40,7 @@ export interface HistoricalTopic {
 }
 
 export interface HistoricalEra {
-  id: number;
+  id: string;
   title: string;
   description: string;
   topics: HistoricalTopic[];
@@ -74,7 +75,7 @@ export interface StoryImage {
 }
 
 export interface AppEvent {
-  id: number;
+  id: string;
   year: string;
   title: string;
   location?: Location;
