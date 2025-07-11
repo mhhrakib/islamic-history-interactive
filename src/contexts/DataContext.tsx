@@ -5,15 +5,19 @@ import React, {
   ReactNode,
   useContext,
 } from "react";
+import { collection, getDocs, query, orderBy, addDoc, updateDoc, doc, deleteDoc, writeBatch } from "firebase/firestore";
+import { db } from "../firebaseConfig"; // Import the db instance
 import type { HistoricalEra, HistoricalTopic, AppEvent } from "../types";
-import { processHistoricalData } from "../constants";
 import { LanguageContext } from "./LanguageContext";
 
-const getNextId = (items: { id: number }[]): number => {
-  if (!items || items.length === 0) return 1;
-  return Math.max(...items.map((i) => i.id)) + 1;
+// A helper to get the next ID, useful for local state before a DB write if needed.
+const getNextId = (items: { id: number | string }[]): number => {
+    if (!items || items.length === 0) return 1;
+    const numericIds = items.map(i => typeof i.id === 'string' ? 0 : i.id);
+    return Math.max(...numericIds, 0) + 1;
 };
 
+// A helper for reordering arrays, useful for drag-and-drop.
 const reorder = <T,>(list: T[], startIndex: number, endIndex: number): T[] => {
   const result = Array.from(list);
   const [removed] = result.splice(startIndex, 1);
@@ -24,10 +28,10 @@ const reorder = <T,>(list: T[], startIndex: number, endIndex: number): T[] => {
 interface DataContextType {
   eras: HistoricalEra[];
   isLoading: boolean;
-  addEra: (title: string, description: string) => void;
-  updateEra: (updatedEra: HistoricalEra) => void;
+  addEra: (title: string, description: string) => Promise<void>;
+  updateEra: (updatedEra: HistoricalEra) => Promise<void>;
   addTopic: (
-    eraId: number,
+    eraId: string,
     data: {
       name: string;
       title: string;
@@ -35,20 +39,16 @@ interface DataContextType {
       bio: string;
       isFeatured?: boolean;
     }
-  ) => void;
-  updateTopic: (updatedTopic: HistoricalTopic) => void;
-  deleteTopic: (topicId: number) => void;
-  addEvent: (topicId: number, newEvent: AppEvent) => void;
-  updateEvent: (topicId: number, updatedEvent: AppEvent) => void;
-  deleteEvent: (topicId: number, eventId: number) => void;
-  reorderEras: (startIndex: number, endIndex: number) => void;
-  reorderTopics: (eraId: number, startIndex: number, endIndex: number) => void;
-  reorderEvents: (
-    topicId: number,
-    startIndex: number,
-    endIndex: number
-  ) => void;
-  importData: (newEras: HistoricalEra[]) => void;
+  ) => Promise<void>;
+  updateTopic: (updatedTopic: HistoricalTopic) => Promise<void>;
+  deleteTopic: (topicId: string) => Promise<void>;
+  addEvent: (topicId: string, newEvent: Omit<AppEvent, 'id'>) => Promise<void>;
+  updateEvent: (updatedEvent: AppEvent) => Promise<void>;
+  deleteEvent: (eventId: string) => Promise<void>;
+  reorderEras: (startIndex: number, endIndex: number) => Promise<void>;
+  reorderTopics: (eraId: string, startIndex: number, endIndex: number) => Promise<void>;
+  reorderEvents: (topicId: string, startIndex: number, endIndex: number) => Promise<void>;
+  importData: (newEras: HistoricalEra[]) => Promise<void>;
 }
 
 export const DataContext = createContext<DataContextType | undefined>(
@@ -63,38 +63,43 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({
   const langContext = useContext(LanguageContext);
   const language = langContext?.language || "en";
 
+  // This effect now loads all data from Firestore on initial load or language change.
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const storedDataKey = `islamicHistoryData_${language}`;
-        const storedData = localStorage.getItem(storedDataKey);
-        if (storedData) {
-          setEras(JSON.parse(storedData));
-          setIsLoading(false);
-          return; // Exit early if we have cached data
-        }
+        const langSuffix = `_${language}`;
+        
+        // Fetch all collections in parallel for efficiency
+        const erasQuery = query(collection(db, `eras${langSuffix}`), orderBy("order"));
+        const topicsQuery = query(collection(db, `topics${langSuffix}`), orderBy("order"));
+        const eventsQuery = query(collection(db, `events${langSuffix}`), orderBy("order"));
 
-        const dataFile =
-          language === "bn"
-            ? "rawHistoricalData_bn.json"
-            : "rawHistoricalData.json";
-        const response = await fetch(`/data/${dataFile}`, {
-          headers: {
-            "Cache-Control": "max-age=3600", // Cache for 1 hour
-          },
-        });
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch historical data: ${response.statusText}`
-          );
-        }
-        const rawData = await response.json();
-        const processedData = processHistoricalData(rawData);
-        setEras(processedData);
+        const [erasSnapshot, topicsSnapshot, eventsSnapshot] = await Promise.all([
+            getDocs(erasQuery),
+            getDocs(topicsQuery),
+            getDocs(eventsQuery)
+        ]);
+
+        // Process snapshots into typed arrays
+        const erasData = erasSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as HistoricalEra[];
+        const topicsData = topicsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as (HistoricalTopic & { eraId: string })[];
+        const eventsData = eventsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as (AppEvent & { topicId: string })[];
+
+        // Assemble the nested data structure client-side
+        const assembledEras = erasData.map(era => ({
+          ...era,
+          topics: topicsData
+            .filter(topic => topic.eraId === era.id)
+            .map(topic => ({
+              ...topic,
+              events: eventsData.filter(event => event.topicId === topic.id)
+            }))
+        }));
+        
+        setEras(assembledEras);
       } catch (error) {
-        console.error("Failed to load or parse historical data.", error);
-        // Set to empty array to prevent app from crashing if data is corrupted or unavailable
+        console.error("Failed to load data from Firestore.", error);
         setEras([]);
       } finally {
         setIsLoading(false);
@@ -104,183 +109,23 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({
     loadData();
   }, [language]);
 
-  useEffect(() => {
-    // Only save to localStorage if data has finished loading and is not empty.
-    // This prevents overwriting good localStorage with an empty array on a failed fetch.
-    if (!isLoading && eras.length > 0) {
-      const storedDataKey = `islamicHistoryData_${language}`;
-      localStorage.setItem(storedDataKey, JSON.stringify(eras));
-    }
-  }, [eras, isLoading, language]);
+  // --- CRUD Functions (to be implemented) ---
+  // These functions will now interact with Firestore instead of local state.
+  // For now, they are placeholders. We will implement them in the next phase.
 
-  const addEra = (title: string, description: string) => {
-    setEras((prevEras) => {
-      const newEra: HistoricalEra = {
-        id: getNextId(prevEras),
-        title,
-        description,
-        topics: [],
-      };
-      return [...prevEras, newEra];
-    });
-  };
+  const addEra = async (title: string, description: string) => { console.log("addEra not implemented"); };
+  const updateEra = async (updatedEra: HistoricalEra) => { console.log("updateEra not implemented"); };
+  const addTopic = async (eraId: string, data: any) => { console.log("addTopic not implemented"); };
+  const updateTopic = async (updatedTopic: HistoricalTopic) => { console.log("updateTopic not implemented"); };
+  const deleteTopic = async (topicId: string) => { console.log("deleteTopic not implemented"); };
+  const addEvent = async (topicId: string, newEvent: Omit<AppEvent, 'id'>) => { console.log("addEvent not implemented"); };
+  const updateEvent = async (updatedEvent: AppEvent) => { console.log("updateEvent not implemented"); };
+  const deleteEvent = async (eventId: string) => { console.log("deleteEvent not implemented"); };
+  const reorderEras = async (startIndex: number, endIndex: number) => { console.log("reorderEras not implemented"); };
+  const reorderTopics = async (eraId: string, startIndex: number, endIndex: number) => { console.log("reorderTopics not implemented"); };
+  const reorderEvents = async (topicId: string, startIndex: number, endIndex: number) => { console.log("reorderEvents not implemented"); };
+  const importData = async (newEras: HistoricalEra[]) => { console.log("importData not implemented"); };
 
-  const updateEra = (updatedEra: HistoricalEra) => {
-    setEras((prevEras) =>
-      prevEras.map((era) => (era.id === updatedEra.id ? updatedEra : era))
-    );
-  };
-
-  const addTopic = (
-    eraId: number,
-    data: {
-      name: string;
-      title: string;
-      period: string;
-      bio: string;
-      isFeatured?: boolean;
-    }
-  ) => {
-    setEras((prevEras) => {
-      const allTopics = prevEras.flatMap((e) => e.topics);
-      const newTopic: HistoricalTopic = {
-        id: getNextId(allTopics),
-        name: data.name,
-        title: data.title,
-        period: data.period,
-        bio: data.bio,
-        isFeatured: data.isFeatured || false,
-        events: [],
-      };
-      return prevEras.map((era) =>
-        era.id === eraId ? { ...era, topics: [...era.topics, newTopic] } : era
-      );
-    });
-  };
-
-  const updateTopic = (updatedTopic: HistoricalTopic) => {
-    setEras((prevEras) =>
-      prevEras.map((era) => ({
-        ...era,
-        topics: era.topics.map((topic) =>
-          topic.id === updatedTopic.id ? updatedTopic : topic
-        ),
-      }))
-    );
-  };
-
-  const deleteTopic = (topicId: number) => {
-    setEras((prevEras) =>
-      prevEras
-        .map((era) => ({
-          ...era,
-          topics: era.topics.filter((topic) => topic.id !== topicId),
-        }))
-        .filter((era) => era.topics.length > 0 || eras.length > 1)
-    ); // Prevents deleting the last era if it becomes empty, unless it's the only one. A better UX would be to handle this in the UI.
-  };
-
-  const addEvent = (topicId: number, newEventData: Omit<AppEvent, "id">) => {
-    setEras((prevEras) => {
-      const allEvents = prevEras
-        .flatMap((e) => e.topics)
-        .flatMap((t) => t.events);
-      const newEvent: AppEvent = { ...newEventData, id: getNextId(allEvents) };
-
-      return prevEras.map((era) => ({
-        ...era,
-        topics: era.topics.map((topic) => {
-          if (topic.id === topicId) {
-            return { ...topic, events: [...topic.events, newEvent] };
-          }
-          return topic;
-        }),
-      }));
-    });
-  };
-
-  const updateEvent = (topicId: number, updatedEvent: AppEvent) => {
-    setEras((prevEras) =>
-      prevEras.map((era) => ({
-        ...era,
-        topics: era.topics.map((topic) => {
-          if (topic.id === topicId) {
-            return {
-              ...topic,
-              events: topic.events.map((event) =>
-                event.id === updatedEvent.id ? updatedEvent : event
-              ),
-            };
-          }
-          return topic;
-        }),
-      }))
-    );
-  };
-
-  const deleteEvent = (topicId: number, eventId: number) => {
-    setEras((prevEras) =>
-      prevEras.map((era) => ({
-        ...era,
-        topics: era.topics.map((topic) => {
-          if (topic.id === topicId) {
-            return {
-              ...topic,
-              events: topic.events.filter((event) => event.id !== eventId),
-            };
-          }
-          return topic;
-        }),
-      }))
-    );
-  };
-
-  const reorderEras = (startIndex: number, endIndex: number) => {
-    setEras((prevEras) => reorder(prevEras, startIndex, endIndex));
-  };
-
-  const reorderTopics = (
-    eraId: number,
-    startIndex: number,
-    endIndex: number
-  ) => {
-    setEras((prevEras) =>
-      prevEras.map((era) => {
-        if (era.id === eraId) {
-          return { ...era, topics: reorder(era.topics, startIndex, endIndex) };
-        }
-        return era;
-      })
-    );
-  };
-
-  const reorderEvents = (
-    topicId: number,
-    startIndex: number,
-    endIndex: number
-  ) => {
-    setEras((prevEras) =>
-      prevEras.map((era) => ({
-        ...era,
-        topics: era.topics.map((topic) => {
-          if (topic.id === topicId) {
-            return {
-              ...topic,
-              events: reorder(topic.events, startIndex, endIndex),
-            };
-          }
-          return topic;
-        }),
-      }))
-    );
-  };
-
-  const importData = (newEras: HistoricalEra[]) => {
-    setEras(newEras);
-    alert(
-      "Data successfully imported. The application will now use the new data set."
-    );
-  };
 
   return (
     <DataContext.Provider
@@ -305,3 +150,4 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({
     </DataContext.Provider>
   );
 };
+

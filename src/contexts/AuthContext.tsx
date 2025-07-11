@@ -4,23 +4,34 @@ import React, {
   useEffect,
   useContext,
   ReactNode,
-  useCallback,
 } from "react";
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+  signOut,
+  User as FirebaseUser,
+} from "firebase/auth";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "../firebaseConfig";
 import type { User, UserProfile, UserProvider } from "../types";
 
-const defaultProfile: UserProfile = {
-  userId: "",
+// Default profile for a new user
+const createDefaultProfile = (userId: string): UserProfile => ({
+  userId,
   completedEventIds: [],
-  dailyStreak: 0,
-  lastLogin: new Date(0).toISOString(),
+  dailyStreak: 1,
+  lastLogin: new Date().toISOString(),
   globalQuizStats: {
     highScore: 0,
     lastScore: 0,
     lastPlayed: new Date(0).toISOString(),
   },
-  lastViewedEventId: undefined,
-  lastViewedTopicId: undefined,
-};
+  // FIX: Initialize with null instead of undefined
+  lastViewedEventId: null,
+  lastViewedTopicId: null,
+});
 
 interface AuthContextType {
   user: User | null;
@@ -28,27 +39,21 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (provider: UserProvider) => void;
   logout: () => void;
-  markEventAsCompleted: (eventId: number) => void;
+  markEventAsCompleted: (eventId: string) => void;
   updateQuizScore: (score: number) => void;
-  setLastViewedLocation: (topicId: number, eventId: number) => void;
+  setLastViewedLocation: (topicId: string, eventId: string) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(
   undefined
 );
 
-const isSameDay = (date1: Date, date2: Date) => {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  );
-};
-
-const isYesterday = (date1: Date, date2: Date) => {
-  const yesterday = new Date(date2);
-  yesterday.setDate(yesterday.getDate() - 1);
-  return isSameDay(date1, yesterday);
+// Helper to check for streak logic
+const isSameDay = (d1: Date, d2: Date) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+const isYesterday = (d1: Date, d2: Date) => {
+    const yesterday = new Date(d2);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return isSameDay(d1, yesterday);
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
@@ -57,159 +62,131 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const parsedUser: User = JSON.parse(storedUser);
-        setUser(parsedUser);
-        if (parsedUser.provider === "admin") {
-          setIsAdmin(true);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists()) {
+          const newUser: User = {
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || "Anonymous User",
+            avatarUrl: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
+            provider: firebaseUser.providerData[0]?.providerId as UserProvider || 'guest',
+          };
+          await setDoc(userDocRef, { ...newUser, createdAt: serverTimestamp() });
+          setUser(newUser);
+        } else {
+          setUser({ ...userDoc.data(), id: userDoc.id } as User);
         }
-        if (
-          parsedUser.provider !== "guest" &&
-          parsedUser.provider !== "admin"
-        ) {
-          loadProfile(parsedUser.id);
-        }
+
+        await loadOrCreateProfile(firebaseUser);
+
+      } else {
+        setUser(null);
+        setProfile(null);
+        setIsAdmin(false);
       }
-    } catch (error) {
-      console.error("Failed to parse user from localStorage", error);
-      localStorage.removeItem("user");
-    }
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const loadProfile = useCallback((userId: string) => {
-    try {
-      const storedProfile = localStorage.getItem(`profile-${userId}`);
-      let loadedProfile: UserProfile;
-      if (storedProfile) {
-        loadedProfile = JSON.parse(storedProfile);
-      } else {
-        loadedProfile = { ...defaultProfile, userId };
-      }
+  const loadOrCreateProfile = async (firebaseUser: FirebaseUser) => {
+    const profileDocRef = doc(db, "userProfiles", firebaseUser.uid);
+    const profileDoc = await getDoc(profileDocRef);
 
+    if (profileDoc.exists()) {
+      const loadedProfile = { ...profileDoc.data(), userId: profileDoc.id } as UserProfile;
       const today = new Date();
       const lastLoginDate = new Date(loadedProfile.lastLogin);
 
       if (!isSameDay(lastLoginDate, today)) {
-        if (isYesterday(lastLoginDate, today)) {
-          loadedProfile.dailyStreak += 1;
-        } else {
-          loadedProfile.dailyStreak = 1;
-        }
-        loadedProfile.lastLogin = today.toISOString();
+          if (isYesterday(lastLoginDate, today)) {
+              loadedProfile.dailyStreak += 1;
+          } else {
+              loadedProfile.dailyStreak = 1;
+          }
+          loadedProfile.lastLogin = today.toISOString();
+          await setDoc(profileDocRef, loadedProfile, { merge: true });
       }
-
       setProfile(loadedProfile);
-      localStorage.setItem(`profile-${userId}`, JSON.stringify(loadedProfile));
+    } else {
+      const newProfile = createDefaultProfile(firebaseUser.uid);
+      await setDoc(profileDocRef, newProfile);
+      setProfile(newProfile);
+    }
+  };
+
+  const login = async (providerId: UserProvider) => {
+    let provider;
+    if (providerId === "google") {
+      provider = new GoogleAuthProvider();
+    } else if (providerId === "facebook") {
+      provider = new FacebookAuthProvider();
+    } else {
+        console.log("Guest/Admin login is a custom flow.");
+        return;
+    }
+    try {
+        await signInWithPopup(auth, provider);
     } catch (error) {
-      console.error("Failed to load or update profile", error);
-      setProfile({ ...defaultProfile, userId });
+        console.error("Authentication failed:", error);
     }
-  }, []);
-
-  const login = (provider: UserProvider) => {
-    let newUser: User;
-    setIsAdmin(false);
-    setProfile(null);
-
-    switch (provider) {
-      case "google":
-        newUser = {
-          id: "user-google-123",
-          name: "Al-Khwarizmi",
-          avatarUrl: "https://i.pravatar.cc/150?u=khwarizmi",
-          provider: "google",
-        };
-        loadProfile(newUser.id);
-        break;
-      case "facebook":
-        newUser = {
-          id: "user-facebook-456",
-          name: "Ibn Battuta",
-          avatarUrl: "https://i.pravatar.cc/150?u=battuta",
-          provider: "facebook",
-        };
-        loadProfile(newUser.id);
-        break;
-      case "admin":
-        newUser = {
-          id: "user-admin-001",
-          name: "Site Admin",
-          avatarUrl: "https://i.pravatar.cc/150?u=admin",
-          provider: "admin",
-        };
-        setIsAdmin(true);
-        break;
-      case "guest":
-      default:
-        newUser = {
-          id: "user-guest-789",
-          name: "Guest",
-          avatarUrl: "",
-          provider: "guest",
-        };
-        break;
-    }
-    setUser(newUser);
-    localStorage.setItem("user", JSON.stringify(newUser));
   };
 
-  const logout = () => {
-    setUser(null);
-    setProfile(null);
-    setIsAdmin(false);
-    localStorage.removeItem("user");
+  const logout = async () => {
+    await signOut(auth);
   };
+  
+  const updateProfileInDb = async (updatedProfile: Partial<UserProfile>) => {
+      if (!user) return;
+      const profileRef = doc(db, "userProfiles", user.id);
+      await setDoc(profileRef, updatedProfile, { merge: true });
+  }
 
-  const updateProfile = (updatedProfile: UserProfile) => {
-    setProfile(updatedProfile);
-    localStorage.setItem(
-      `profile-${updatedProfile.userId}`,
-      JSON.stringify(updatedProfile)
-    );
-  };
-
-  const markEventAsCompleted = (eventId: number) => {
-    if (
-      profile &&
-      user?.provider !== "guest" &&
-      !profile.completedEventIds.includes(eventId)
-    ) {
+  const markEventAsCompleted = (eventId: string) => {
+    if (profile && !profile.completedEventIds.includes(eventId)) {
       const updatedProfile = {
         ...profile,
         completedEventIds: [...profile.completedEventIds, eventId],
       };
-      updateProfile(updatedProfile);
+      setProfile(updatedProfile);
+      updateProfileInDb({ completedEventIds: updatedProfile.completedEventIds });
     }
   };
 
   const updateQuizScore = (score: number) => {
-    if (profile && user?.provider !== "guest") {
-      const updatedProfile = {
-        ...profile,
-        globalQuizStats: {
-          highScore: Math.max(profile.globalQuizStats.highScore, score),
-          lastScore: score,
-          lastPlayed: new Date().toISOString(),
-        },
-      };
-      updateProfile(updatedProfile);
-    }
+      if (profile) {
+          const updatedStats = {
+              highScore: Math.max(profile.globalQuizStats.highScore, score),
+              lastScore: score,
+              lastPlayed: new Date().toISOString(),
+          };
+          setProfile({...profile, globalQuizStats: updatedStats });
+          updateProfileInDb({ globalQuizStats: updatedStats });
+      }
   };
 
-  const setLastViewedLocation = (topicId: number, eventId: number) => {
-    if (profile && user?.provider !== "guest") {
-      const updatedProfile = {
-        ...profile,
-        lastViewedTopicId: topicId,
-        lastViewedEventId: eventId,
-      };
-      updateProfile(updatedProfile);
-    }
+  const setLastViewedLocation = (topicId: string, eventId: string) => {
+      if (profile) {
+          const updatedProfile = {
+              ...profile,
+              lastViewedTopicId: topicId,
+              lastViewedEventId: eventId,
+          };
+          setProfile(updatedProfile);
+          updateProfileInDb({ lastViewedTopicId: topicId, lastViewedEventId: eventId });
+      }
   };
+
+  if (authLoading) {
+      return <div className="w-screen h-screen flex items-center justify-center bg-base dark:bg-gray-900"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary dark:border-green-400"></div></div>;
+  }
 
   return (
     <AuthContext.Provider
@@ -227,12 +204,4 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 };
