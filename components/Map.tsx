@@ -71,7 +71,7 @@ export const MapView: React.FC<{ location: Location; allEvents: AppEvent[] }> = 
       >
         <TileLayer
           attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'
-          url="https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.png?key=BvbvT2Q3VczQYsIUuwaO"
+          url="https://api.maptiler.com/maps/outdoor/{z}/{x}/{y}.png?key=BvbvT2Q3VczQYsIUuwaO"
         />
         <MapUpdater location={location} />
         {uniqueLocations.map(loc => {

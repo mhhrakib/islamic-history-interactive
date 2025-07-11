@@ -25,7 +25,7 @@ export const UserStats: React.FC = () => {
     }
 
     return (
-        <div className="hidden md:flex items-center gap-4 border-r border-border-color dark:border-gray-700 pr-4 mr-2">
+        <div className="hidden md:flex items-center gap-4 border-r border-border-color dark:border-gray-700 pr-4">
             <StatItem 
                 icon={<ProgressIcon className="w-5 h-5 text-green-600 dark:text-green-400" />} 
                 value={`${profile.completedEventIds.length}/${allEventsCount}`} 

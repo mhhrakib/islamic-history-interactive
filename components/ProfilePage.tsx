@@ -142,7 +142,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onNavigate }) => {
                             <p className="text-sm text-text-secondary dark:text-gray-400 font-sans hidden sm:block">{user.name}</p>
                         </div>
                       </div>
-                       <div className="flex items-center gap-2">
+                       <div className="flex items-center gap-4">
                           <ThemeToggler />
                           <LanguageSwitcher />
                           <ProfileDropdown onLoginClick={() => {}} onNavigate={onNavigate} />

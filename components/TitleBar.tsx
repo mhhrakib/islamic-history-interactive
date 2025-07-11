@@ -50,7 +50,7 @@ export const TitleBar = forwardRef<HTMLDivElement, TitleBarProps>(({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <ThemeToggler />
             <LanguageSwitcher />
             <UserStats />

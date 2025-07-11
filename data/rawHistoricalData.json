@@ -155,7 +155,7 @@
           {
             "year": "c. 2000 BCE",
             "title": "Destroying the Idols",
-            "location": { "name": "Ur, Iraq", "coords": { "lat": 30.9622, "lng": 46.1039 }, "zoom": 14 },
+            "location": { "name": "Ur, Iraq", "coords": { "lat": 30.9622, "lng": 46.1039 }, "zoom": 10 },
             "story": "In his youth, Ibrahim challenged the polytheistic practices of his people. He cleverly destroyed all the idols in their temple, leaving only the largest one intact with an axe in its hand. When confronted, he sarcastically suggested they ask the great idol who was responsible. This act was not vandalism, but a profound intellectual proof to demonstrate the powerlessness of the false gods his people worshipped, forcing them to confront the illogic of their beliefs.",
             "lessons": [
               "Use wisdom and critical thinking to challenge falsehood.",
@@ -176,7 +176,7 @@
           {
             "year": "c. 2000 BCE",
             "title": "The Test of Sacrifice",
-            "location": { "name": "Mina", "coords": { "lat": 21.4136, "lng": 39.8943 }, "zoom": 15 },
+            "location": { "name": "Mina", "coords": { "lat": 21.4136, "lng": 39.8943 }, "zoom": 10 },
             "story": "In a powerful test of faith, God commanded Ibrahim in a dream to sacrifice his beloved son, Ismail. Both father and son submitted to the divine will. As Ibrahim prepared to perform the act, God intervened, revealing that the dream was a trial of his devotion. A ram was provided as a substitute, an event commemorated by Muslims worldwide during the festival of Eid al-Adha. This story is the ultimate example of trust and submission to God.",
             "lessons": [
               "The greatest tests are often given to those with the strongest faith.",
@@ -204,7 +204,7 @@
           {
             "year": "c. 2000 BCE",
             "title": "Building the Kaaba",
-            "location": { "name": "Makkah", "coords": { "lat": 21.4225, "lng": 39.8262 }, "zoom": 14 },
+            "location": { "name": "Makkah", "coords": { "lat": 21.4225, "lng": 39.8262 }, "zoom": 10 },
             "story": "By divine command, Ibrahim and his son Ismail traveled to the valley of Makkah to raise the foundations of the Kaaba, the first house of worship established for humanity. Together, they constructed the simple, cube-shaped building and prayed for God to accept their deed and to make Makkah a sanctuary of peace. Their work established Makkah as the spiritual center of monotheism for all time.",
             "lessons": [
               "Serving God through physical acts of worship, like building a mosque, is a virtuous deed.",
@@ -373,7 +373,7 @@
           {
             "year": "610 CE",
             "title": "The First Revelation",
-            "location": { "name": "Cave of Hira, Makkah", "coords": { "lat": 21.4578, "lng": 39.8583 }, "zoom": 3 },
+            "location": { "name": "Cave of Hira, Makkah", "coords": { "lat": 21.4578, "lng": 39.8583 }, "zoom": 10 },
             "story": "While meditating in the Cave of Hira on Jabal al-Nour (the Mountain of Light), the Angel Jibril (Gabriel) appeared to Muhammad and commanded him to 'Read!'. Terrified and stating he could not read, the angel embraced him forcefully and repeated the command. After the third time, the first verses of the Qur'an were revealed: 'Read! In the name of your Lord who created...'. This monumental event marked the beginning of his prophethood and the 23-year period of the Qur'an's revelation.",
             "lessons": ["The pursuit of truth and spiritual contemplation can lead to divine guidance.", "The Qur'an's origin is divine, revealed through an angel.", "The profound importance of knowledge and reading in Islam."],
             "glossary": [{ "term": "Cave of Hira", "explanation": "The cave on Jabal al-Nour where the Prophet received his first revelation."}, { "term": "Jibril (Gabriel)", "explanation": "The Archangel who delivered God's revelations to the prophets."}],
@@ -396,7 +396,7 @@
           {
             "year": "632 CE",
             "title": "The Saqifah & Uniting the Ummah",
-            "location": { "name": "Madinah", "coords": { "lat": 24.4686, "lng": 39.6142 }, "zoom": 13 },
+            "location": { "name": "Madinah", "coords": { "lat": 24.4686, "lng": 39.6142 }, "zoom": 10 },
             "story": "After the Prophet's death, the community faced a crisis of leadership. The companions gathered at the Saqifah (courtyard) of Banu Sa'idah. Through wise counsel and consensus, Abu Bakr was chosen as the Caliph. His first major act was to address the tribes who refused to pay Zakat, firmly establishing that the pillars of Islam were non-negotiable and thus preventing the faith from fragmenting.",
             "lessons": ["The importance of unity and legitimate leadership.", "Upholding the core tenets of the faith is paramount for the community's survival."],
             "glossary": [{ "term": "Caliph (Khalifa)", "explanation": "The successor to the Prophet Muhammad as the leader of the Muslim community (Ummah)." }, { "term": "Zakat", "explanation": "The obligatory charity, one of the five pillars of Islam." }],
@@ -408,7 +408,7 @@
           {
             "year": "634 CE",
             "title": "Compilation of the Qur'an",
-            "location": { "name": "Madinah", "coords": { "lat": 24.4686, "lng": 39.6142 }, "zoom": 13 },
+            "location": { "name": "Madinah", "coords": { "lat": 24.4686, "lng": 39.6142 }, "zoom": 10 },
             "story": "During the Ridda wars, many Huffaz (memorizers of the Qur'an) were martyred. Umar ibn al-Khattab grew concerned and urged Abu Bakr to compile the Qur'an into a single volume. Initially hesitant, Abu Bakr was convinced of the necessity. He appointed Zayd ibn Thabit, the Prophet's primary scribe, to lead this monumental task. Zayd meticulously gathered the verses from parchments, palm leaves, and the memories of men, creating the first official manuscript (Mushaf) of the Qur'an, safeguarding it for all future generations.",
             "lessons": ["The importance of foresight and preserving divine revelation.", "The value of consultation (Shura) in leadership."],
             "glossary": [{ "term": "Mushaf", "explanation": "A physical copy of the Qur'an, a codex." }, { "term": "Huffaz", "explanation": "Plural of Hafiz, someone who has completely memorized the Qur'an." }],
