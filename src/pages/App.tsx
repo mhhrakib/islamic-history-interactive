@@ -11,6 +11,7 @@ import { GlobalQuizPage } from "../components/quiz/GlobalQuizPage";
 import { LeaderboardPage } from "../components/quiz/LeaderboardPage";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { AuthModal } from "../components/auth/AuthModal";
+import { MapPreloader } from "../components/map/MapPreloader";
 
 type Page = "home" | "topic" | "profile" | "quiz" | "leaderboard";
 
@@ -103,7 +104,9 @@ const App: React.FC = () => {
       <LanguageProvider>
         <AuthProvider>
           <DataProvider>
-            <AppContent />
+            <MapPreloader>
+              <AppContent />
+            </MapPreloader>
           </DataProvider>
         </AuthProvider>
       </LanguageProvider>

@@ -30,11 +30,102 @@
   transform-origin: top right;
 }
 
+/* Map loading animation */
+@keyframes map-loading {
+  0% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+  100% { opacity: 0.3; }
+}
+.map-loading {
+  animation: map-loading 1.5s ease-in-out infinite;
+}
+
 /* --- Leaflet Map Customizations --- */
 
 /* Style for the map container */
 .leaflet-container {
   border-radius: 0.75rem; /* rounded-xl */
+  /* Optimize for performance */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  /* Ensure visibility */
+  background-color: #f8f9fa !important;
+  min-height: 384px !important;
+  height: 100% !important;
+  width: 100% !important;
+  /* Force visibility */
+  display: block !important;
+  position: relative !important;
+  z-index: 1 !important;
+  /* Performance optimizations */
+  contain: layout style paint;
+  isolation: isolate;
+}
+
+/* Ensure map tiles are visible */
+.leaflet-tile {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+  position: absolute !important;
+  /* Performance optimizations */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Ensure map pane is visible */
+.leaflet-map-pane {
+  contain: layout style paint;
+  z-index: 1 !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ensure tile pane is visible */
+.leaflet-tile-pane {
+  z-index: 2 !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ensure overlay pane is visible */
+.leaflet-overlay-pane {
+  z-index: 3 !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ensure marker pane is visible */
+.leaflet-marker-pane {
+  z-index: 4 !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ensure tooltip pane is visible */
+.leaflet-tooltip-pane {
+  z-index: 5 !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Custom styles for Leaflet tooltips (location names on the map) */
@@ -47,6 +138,9 @@
     border-radius: 0.375rem;
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     border: none;
+    /* Optimize for performance */
+    will-change: transform;
+    transform: translateZ(0);
 }
 .leaflet-tooltip-custom.leaflet-tooltip-top::before {
     border-top-color: rgba(255, 255, 255, 0.85);
@@ -65,6 +159,40 @@
 }
 .dark .leaflet-tooltip-custom.leaflet-tooltip-bottom::before {
     border-bottom-color: rgba(31, 41, 55, 0.85);
+}
+
+/* Map marker optimizations */
+.leaflet-marker-icon {
+  /* Optimize for performance */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Performance optimizations for map interactions */
+.leaflet-interactive {
+  /* Optimize for performance */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimize map controls */
+.leaflet-control {
+  /* Performance optimizations */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
+}
+
+/* Optimize map popups */
+.leaflet-popup {
+  /* Performance optimizations */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
 }
 
 /* --- Utility Classes --- */
