@@ -1,16 +1,22 @@
-import React, { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, Tooltip } from 'react-leaflet';
-import L from 'leaflet';
-import type { Location, AppEvent } from '../types';
-import { LoadingSpinner } from './LoadingSpinner';
+import React, { useEffect, useMemo } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  useMap,
+  Tooltip,
+} from "react-leaflet";
+import L from "leaflet";
+import type { Location, AppEvent } from "../types";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 // A robust check for valid coordinates
-const isValidCoord = (coord: any): coord is { lat: number, lng: number } => {
+const isValidCoord = (coord: any): coord is { lat: number; lng: number } => {
   return (
     coord &&
-    typeof coord.lat === 'number' &&
+    typeof coord.lat === "number" &&
     isFinite(coord.lat) &&
-    typeof coord.lng === 'number' &&
+    typeof coord.lng === "number" &&
     isFinite(coord.lng)
   );
 };
@@ -33,24 +39,28 @@ const MapUpdater: React.FC<{ location: Location }> = ({ location }) => {
 const createIcon = (className: string, size: number) => {
   return L.divIcon({
     html: `<div class="${className}" style="width: ${size}px; height: ${size}px; border-radius: 50%;"></div>`,
-    className: 'bg-transparent border-0', // Reset default Leaflet icon styles
+    className: "bg-transparent border-0", // Reset default Leaflet icon styles
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
 };
 
 // Define icons for active (selected) and inactive events
-const activeIcon = createIcon('bg-secondary ring-2 ring-white shadow-lg', 18);
-const inactiveIcon = createIcon('bg-primary/80 ring-1 ring-white/50', 12);
+const activeIcon = createIcon("bg-secondary ring-2 ring-white shadow-lg", 18);
+const inactiveIcon = createIcon("bg-primary/80 ring-1 ring-white/50", 12);
 
-
-export const MapView: React.FC<{ location: Location; allEvents: AppEvent[] }> = ({ location, allEvents }) => {
-  
-  const uniqueLocations = useMemo(() => 
-    Array.from(new Map(allEvents.map(e => [e.location.name, e.location])).values()), 
+export const MapView: React.FC<{
+  location: Location;
+  allEvents: AppEvent[];
+}> = ({ location, allEvents }) => {
+  const uniqueLocations = useMemo(
+    () =>
+      Array.from(
+        new Map(allEvents.map((e) => [e.location?.name, e.location])).values()
+      ),
     [allEvents]
   );
-  
+
   if (!isValidCoord(location?.coords)) {
     return (
       <div className="w-full h-96 lg:h-auto bg-surface rounded-xl shadow-md overflow-hidden flex-grow flex items-center justify-center">
@@ -67,14 +77,14 @@ export const MapView: React.FC<{ location: Location; allEvents: AppEvent[] }> = 
         center={location.coords}
         zoom={location.zoom}
         scrollWheelZoom={true}
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: "100%", width: "100%" }}
       >
         <TileLayer
           attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'
           url="https://api.maptiler.com/maps/outdoor/{z}/{x}/{y}.png?key=BvbvT2Q3VczQYsIUuwaO"
         />
         <MapUpdater location={location} />
-        {uniqueLocations.map(loc => {
+        {uniqueLocations.map((loc) => {
           if (!isValidCoord(loc?.coords)) {
             return null;
           }
@@ -87,7 +97,7 @@ export const MapView: React.FC<{ location: Location; allEvents: AppEvent[] }> = 
             >
               <Tooltip
                 permanent
-                direction={isActiveLocation(loc) ? 'bottom' : 'top'}
+                direction={isActiveLocation(loc) ? "bottom" : "top"}
                 offset={isActiveLocation(loc) ? [0, 9] : [0, -6]}
                 className="leaflet-tooltip-custom"
               >
